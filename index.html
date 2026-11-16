@@ -111,6 +111,10 @@ h1{
 .schema-card h2{font-size:2rem}
 .sgrid{display:grid; grid-template-columns:20px repeat(4,1fr); gap:10px; align-items:center; width:100%; margin:0 auto}
 .sgrid .lbl{font-size:1.2rem}
+.sgrid.cols{grid-template-columns:20px 1fr 1fr 1.1fr 1fr 1fr; column-gap:8px}
+.seg{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+.card .seg .btn{background:transparent; color:var(--phosphor); border-color:var(--phosphor-dim); font-weight:400; padding:9px 6px}
+.card .seg .btn[aria-pressed="true"]{background:var(--phosphor); color:#021004; border-color:var(--phosphor); font-weight:700}
 .sdot{
   position:relative; aspect-ratio:1; border-radius:50%; border:5px solid var(--g);
   box-sizing:border-box; background:var(--g); box-shadow:0 0 10px var(--g);
@@ -223,7 +227,12 @@ body.land .card.wide > .sgrid{grid-column:2; grid-row:1 / span 6; width:min(100%
 <div class="overlay" id="schema" hidden>
   <div class="card schema-card wide">
     <h2>SCHÉMA</h2>
+    <div class="seg" role="group" aria-label="Disposition du schéma">
+      <button class="btn" type="button" id="viewMatrix" aria-pressed="true">Matrice</button>
+      <button class="btn" type="button" id="viewCols" aria-pressed="false">Colonnes</button>
+    </div>
     <div class="sgrid" id="sgrid"></div>
+    <div class="sgrid cols" id="sgridCols" hidden></div>
     <div class="legend">
       <div><i style="--g:#ff3b3b"></i>Rouge</div>
       <div><i style="--g:#3b8bff"></i>Bleu</div>
@@ -434,21 +443,39 @@ body.land .card.wide > .sgrid{grid-column:2; grid-row:1 / span 6; width:min(100%
 
   // Schéma des groupes
   const GCOL = ['#ff3b3b','#3b8bff','#3dff6e','#b45cff','#8c8c8c'];
-  const sgrid = $('sgrid'), schema = $('schema');
+  const sgrid = $('sgrid'), sgridCols = $('sgridCols'), schema = $('schema');
+  const dot = id => {
+    const gi = GROUPS.findIndex(g => g.same.includes(id) || g.diff.includes(id));
+    const d = mk('div', 'sdot' + (GROUPS[gi].diff.includes(id) ? ' diff' : ''));
+    d.style.setProperty('--g', GCOL[gi]);
+    d.setAttribute('aria-label', id);
+    return d;
+  };
+  // Vue matrice : lignes A–D, colonnes 1–4
   sgrid.appendChild(mk('div', 'lbl'));
   COLS.forEach(c => sgrid.appendChild(mk('div', 'lbl', c)));
   ROWS.forEach(r => {
     sgrid.appendChild(mk('div', 'lbl', r));
-    COLS.forEach(c => {
-      const id = r + c;
-      const gi = GROUPS.findIndex(g => g.same.includes(id) || g.diff.includes(id));
-      const d = mk('div', 'sdot' + (GROUPS[gi].diff.includes(id) ? ' diff' : ''));
-      d.style.setProperty('--g', GCOL[gi]);
-      d.setAttribute('aria-label', id);
-      sgrid.appendChild(d);
+    COLS.forEach(c => sgrid.appendChild(dot(r + c)));
+  });
+  // Vue colonnes : colonnes A B | C D, boutons 1–4 de haut en bas
+  const head = ['', 'A', 'B', '', 'C', 'D'];
+  head.forEach(t => sgridCols.appendChild(mk('div', 'lbl', t)));
+  COLS.forEach(c => {
+    sgridCols.appendChild(mk('div', 'lbl', c));
+    ROWS.forEach((r, i) => {
+      if (i === 2) sgridCols.appendChild(mk('div'));
+      sgridCols.appendChild(dot(r + c));
     });
   });
-  $('schemaBtn').addEventListener('click', () => schema.hidden = false);
+  function setView(cols){
+    sgrid.hidden = cols; sgridCols.hidden = !cols;
+    $('viewMatrix').setAttribute('aria-pressed', String(!cols));
+    $('viewCols').setAttribute('aria-pressed', String(cols));
+  }
+  $('viewMatrix').addEventListener('click', () => setView(false));
+  $('viewCols').addEventListener('click', () => setView(true));
+  $('schemaBtn').addEventListener('click', () => { setView(land); schema.hidden = false; });
   $('schemaClose').addEventListener('click', () => schema.hidden = true);
   schema.addEventListener('click', e => { if (e.target === schema) schema.hidden = true; });
 
